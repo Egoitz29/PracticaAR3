@@ -1,42 +1,47 @@
 ﻿using UnityEngine;
+using System.Collections.Generic;
 
 public class GuiaPorMigas : MonoBehaviour
 {
-    public GameObject migaPrefab; // Solo uno, siempre el mismo
+    public GameObject migaPrefab;
     public Vector3[] posicionesRelativas;
 
-    [Header("Solo para simulación en Editor")]
-    public Vector3 posicionSimulada = Vector3.zero;
-    public Quaternion rotacionSimulada = Quaternion.identity;
+    [Header("Referencia colocada manualmente")]
+    public Transform origenManual;
 
-    private int indiceActual = 0;
-    private Transform origen;
+    private List<GameObject> migasInstanciadas = new List<GameObject>();
 
     void Start()
     {
-        GameObject imagenFakeGO = GameObject.Find("FakeImage");
-        if (imagenFakeGO == null)
+        if (origenManual == null)
         {
-            imagenFakeGO = new GameObject("FakeImage");
-        }
-
-        imagenFakeGO.transform.position = posicionSimulada;
-        imagenFakeGO.transform.rotation = rotacionSimulada;
-
-        origen = imagenFakeGO.transform;
-        InstanciarSiguienteMiga();
-    }
-
-    public void InstanciarSiguienteMiga()
-    {
-        if (indiceActual >= posicionesRelativas.Length)
-        {
-            Debug.Log("Todas las migas han sido colocadas.");
+            Debug.LogError("Debes arrastrar el objeto de referencia manual en el Inspector.");
             return;
         }
 
-        Vector3 posicionMundo = origen.TransformPoint(posicionesRelativas[indiceActual]);
-        GameObject nuevaMiga = Instantiate(migaPrefab, posicionMundo, rotacionSimulada);
-        indiceActual++;
+        InstanciarTodasLasMigas();
+    }
+
+    void InstanciarTodasLasMigas()
+    {
+        for (int i = 0; i < posicionesRelativas.Length; i++)
+        {
+            Vector3 posicionMundo = origenManual.TransformPoint(posicionesRelativas[i]);
+            GameObject nuevaMiga = Instantiate(migaPrefab, posicionMundo, origenManual.rotation);
+            nuevaMiga.SetActive(false);
+            nuevaMiga.GetComponent<MigaSecuencial>().AsignarSiguienteMiga(null);
+
+            migasInstanciadas.Add(nuevaMiga);
+        }
+
+        // Enlaza cada miga con la siguiente
+        for (int i = 0; i < migasInstanciadas.Count - 1; i++)
+        {
+            migasInstanciadas[i].GetComponent<MigaSecuencial>().AsignarSiguienteMiga(migasInstanciadas[i + 1]);
+        }
+
+        // Activa solo la primera
+        if (migasInstanciadas.Count > 0)
+            migasInstanciadas[0].SetActive(true);
     }
 }
